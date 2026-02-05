@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Héroe Legendario Final</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<style>
+body{margin:0;overflow:hidden;background:black;font-family:sans-serif}
+canvas{display:block;transition:filter .5s}
+#menu,#mapa,#tienda,#final,#gameOver{
+ position:fixed;inset:0;background:rgba(0,0,0,.9);
+ color:white;display:flex;flex-direction:column;
+ justify-content:center;align-items:center;gap:10px
+}
+#mapa,#tienda,#final,#gameOver{display:none}
+button{font-size:18px;padding:10px 20px}
+#ui{position:fixed;top:10px;left:10px;color:white;z-index:5}
+#controls{
+ position:fixed;bottom:20px;left:0;right:0;
+ display:flex;justify-content:space-between;padding:20px
+}
+.ctrl{width:70px;height:70px;border-radius:50%;
+ background:rgba(255,255,255,.2);color:white;
+ display:flex;justify-content:center;align-items:center;
+ font-size:30px;user-select:none}
+</style>
+</head>
+
+<body>
+
+<!-- 🎵 AUDIOS -->
+<audio id="musica" src="musica.mp3" loop></audio>
+<audio id="muerte" src="muerte.mp3"></audio>
+<audio id="disparo" src="disparo.mp3"></audio>
+<audio id="power" src="power.mp3"></audio>
+
+<!-- 🕹️ MENÚ -->
+<div id="menu">
+ <h2>🦸 HÉROE LEGENDARIO</h2>
+ <button onclick="setDif(1)">🧒 Fácil</button>
+ <button onclick="setDif(2)">😎 Normal</button>
+ <button onclick="setDif(3)">😈 Difícil</button>
+ <button onclick="nueva()">▶ Jugar</button>
+ <div>🏆 Récord: <span id="record"></span></div>
+</div>
+
+<!-- 🗺️ MAPA -->
+<div id="mapa">
+ <h3>🗺️ Mapa</h3>
+ <button onclick="start()">Entrar al nivel</button>
+ <button onclick="abrirTienda()">📦 Tienda</button>
+</div>
+
+<!-- 📦 TIENDA -->
+<div id="tienda">
+ <h3>📦 Tienda</h3>
+ <button onclick="mejora('vida')">❤️ +1 Vida</button>
+ <button onclick="mejora('disparo')">💥 Disparo rápido</button>
+ <button onclick="mejora('escudo')">🛡️ Escudo inicial</button>
+ <button onclick="cerrarTienda()">Volver</button>
+</div>
+
+<div id="ui">
+Nivel: <span id="nivel"></span><br>
+Vidas: <span id="vidas"></span><br>
+Puntos: <span id="puntos"></span>
+</div>
+
+<canvas id="game"></canvas>
+
+<div id="controls">
+ <div class="ctrl" id="jump">⬆️</div>
+ <div class="ctrl" id="fire">🔥</div>
+</div>
+
+<!-- 👑 FINAL -->
+<div id="final">
+ <h2>👑 FINAL</h2>
+ <p>El héroe salvó el mundo.<br>Gracias por jugar.</p>
+ <button onclick="location.reload()">Volver al inicio</button>
+</div>
+
+<div id="gameOver">
+ 💀 GAME OVER
+ <button onclick="location.reload()">Menú</button>
+</div>
+
+<script>
+const c=game,ctx=c.getContext("2d");
+c.width=innerWidth;c.height=innerHeight;
+
+const musica=document.getElementById("musica");
+document.addEventListener("touchstart",()=>musica.play(),{once:true});
+
+const heroImg=new Image();heroImg.src="hero.png";
+const enemyImg=new Image();enemyImg.src="enemy.png";
+const bossImg=new Image();bossImg.src="boss.png";
+const bgImg=new Image();bgImg.src="bg.png";
+
+let hero,enemigos,balas,jefe;
+let nivel=1,vidas=3,puntos=0,dif=1;
+let mejoras={vida:0,disparo:0,escudo:0};
+
+document.getElementById("record").textContent=localStorage.getItem("record")||0;
+
+function setDif(d){dif=d;}
+function nueva(){
+ document.getElementById("menu").style.display="none";
+ document.getElementById("mapa").style.display="flex";
+}
+
+function abrirTienda(){mapa.style.display="none";tienda.style.display="flex";}
+function cerrarTienda(){tienda.style.display="none";mapa.style.display="flex";}
+
+function mejora(t){
+ if(t==="vida") vidas++;
+ if(t==="disparo") mejoras.disparo=1;
+ if(t==="escudo") mejoras.escudo=1;
+}
+
+function start(){
+ mapa.style.display="none";
+ iniciar();
+ loop();
+}
+
+function iniciar(){
+ hero={x:60,y:c.height/2,w:40,h:40,vy:0};
+ enemigos=[];balas=[];
+ jefe=null;
+ puntos=0;
+ document.getElementById("nivel").textContent=nivel;
+ document.getElementById("vidas").textContent=vidas;
+}
+
+function disparar(){
+ balas.push({x:hero.x+40,y:hero.y+20});
+ disparo.play();
+}
+
+function actualizar(){
+ hero.vy+=0.6;hero.y+=hero.vy;
+ if(hero.y<0||hero.y+hero.h>c.height) perder();
+
+ if(Math.random()<0.02*dif) enemigos.push({x:c.width,y:Math.random()*c.height,w:40,h:40});
+
+ enemigos.forEach(e=>{
+  e.x-=2*dif;
+  if(col(hero,e)) perder();
+ });
+
+ balas.forEach(b=>b.x+=8);
+
+ enemigos.forEach((e,i)=>{
+  balas.forEach((b,bi)=>{
+   if(col(b,e)){enemigos.splice(i,1);balas.splice(bi,1);puntos+=10;}
+  });
+ });
+
+ if(nivel===5&&!jefe) jefe={x:c.width-200,y:c.height/2,w:150,h:150,vida:30};
+ if(jefe){
+  jefe.y+=Math.sign(hero.y-jefe.y);
+  balas.forEach((b,bi)=>{
+   if(col(b,jefe)){jefe.vida--;balas.splice(bi,1);
+    if(jefe.vida<=0){final.style.display="flex";}
+   }
+  });
+ }
+
+ document.getElementById("puntos").textContent=puntos;
+}
+
+function dibujar(){
+ ctx.drawImage(bgImg,0,0,c.width,c.height);
+ ctx.drawImage(heroImg,hero.x,hero.y,hero.w,hero.h);
+ enemigos.forEach(e=>ctx.drawImage(enemyImg,e.x,e.y,e.w,e.h));
+ if(jefe) ctx.drawImage(bossImg,jefe.x,jefe.y,jefe.w,jefe.h);
+ balas.forEach(b=>ctx.fillRect(b.x,b.y,8,4));
+}
+
+function col(a,b){
+ return a.x<b.x+40&&a.x+40>b.x&&a.y<b.y+40&&a.y+40>b.y;
+}
+
+function perder(){
+ vidas--;
+ document.getElementById("vidas").textContent=vidas;
+ if(vidas<=0){
+  muerte.play();
+  let r=Math.max(puntos,localStorage.getItem("record")||0);
+  localStorage.setItem("record",r);
+  gameOver.style.display="flex";
+ }
+ hero.y=c.height/2;
+}
+
+jump.onclick=()=>hero.vy=-10;
+fire.onclick=()=>disparar();
+
+function loop(){actualizar();dibujar();requestAnimationFrame(loop);}
+</script>
+</body>
+</html>
