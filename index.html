@@ -1,0 +1,123 @@
+<!DOCTYPE html>  <html lang="es">  
+<head>  
+  <meta charset="UTF-8">  
+  <title>Juego Multiplayer</title>    <!-- Optimizado para celular -->    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">    <style>  
+    body {  
+      margin: 0;  
+      overflow: hidden;  
+      background: black;  
+      touch-action: none;  
+    }  
+  
+    canvas {  
+      display: block;  
+      background: #111;  
+      transition: filter 0.5s ease;  
+    }  
+  
+    #gameOver {  
+      position: fixed;  
+      top: 0;  
+      left: 0;  
+      width: 100%;  
+      height: 100%;  
+      background: rgba(0,0,0,0.8);  
+      color: white;  
+      display: none;  
+      justify-content: center;  
+      align-items: center;  
+      flex-direction: column;  
+      font-size: 30px;  
+      z-index: 10;  
+    }  
+  
+    button {  
+      font-size: 20px;  
+      padding: 10px 20px;  
+      margin-top: 20px;  
+    }  
+  </style>  </head>  
+<body>    <!-- 🎵 Música y 💀 sonido -->  <audio id="musica" src="musica.mp3" loop></audio>
+<audio id="muerte" src="muerte.mp3"></audio>
+
+<canvas id="game"></canvas>
+
+  <div id="gameOver">  
+    <div>GAME OVER</div>  
+    <button onclick="reiniciar()">Reintentar</button>  
+  </div>    <script>  
+    const canvas = document.getElementById("game");  
+    const ctx = canvas.getContext("2d");  
+  
+    canvas.width = window.innerWidth;  
+    canvas.height = window.innerHeight;  
+  
+    // 🎵 Sonidos  
+    const musica = document.getElementById("musica");  
+    const sonidoMuerte = document.getElementById("muerte");  
+  
+    musica.volume = 0.4;  
+  
+    // iniciar música al primer toque (móvil)  
+    document.addEventListener("touchstart", () => {  
+      musica.play();  
+    }, { once: true });  
+  
+    let y = canvas.height / 2;  
+    let velocidad = 3;  
+    let vivo = true;  
+  
+    // 👀 nivel de blur (aumenta con cada muerte)  
+    let blurNivel = 0;  
+  
+    function dibujar() {  
+      ctx.clearRect(0, 0, canvas.width, canvas.height);  
+      ctx.fillStyle = "cyan";  
+      ctx.fillRect(50, y, 30, 30);  
+    }  
+  
+    function actualizar() {  
+      if (!vivo) return;  
+  
+      y += velocidad;  
+  
+      if (y > canvas.height - 30 || y < 0) {  
+        morir();  
+      }  
+    }  
+  
+    function morir() {  
+      vivo = false;  
+  
+      // 💀 sonido de muerte  
+      sonidoMuerte.currentTime = 0;  
+      sonidoMuerte.play();  
+  
+      // 🌫️ aumentar blur  
+      blurNivel += 2; // mientras más, más difícil 😈  
+      canvas.style.filter = `blur(${blurNivel}px)`;  
+  
+      document.getElementById("gameOver").style.display = "flex";  
+    }  
+  
+    function reiniciar() {  
+      y = canvas.height / 2;  
+      vivo = true;  
+      document.getElementById("gameOver").style.display = "none";  
+      loop();  
+    }  
+  
+    canvas.addEventListener("touchstart", e => {  
+      e.preventDefault();  
+      y -= 80;  
+    });  
+  
+    function loop() {  
+      actualizar();  
+      dibujar();  
+      requestAnimationFrame(loop);  
+    }  
+  
+    loop();  
+  </script>  </body>  
+</html>
